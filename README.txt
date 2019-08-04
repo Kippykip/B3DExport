@@ -1,8 +1,6 @@
 
-B3Dexport.py - a blender 2.7 .b3d export script - for minetest.
+B3Dexport.py - a blender 2.79 .b3d export script - for OpenB3D/Bliz3D/MiniB3D.
 
 License: gpl-2.0
 
-This version is maintained for compatibility with the minetest game engine
-specifically, and is not kept up to date with more recent versions - these
-are known to break the models' orientation and are thus not usable.
+Basically the same as the MineTest version but just with "Export Textures" enabled by default.
