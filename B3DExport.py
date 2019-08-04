@@ -1451,7 +1451,7 @@ class B3D_Export_Operator(bpy.types.Operator):
     lights   = bpy.props.BoolProperty(name="Export Lights", default=False)
     mipmap   = bpy.props.BoolProperty(name="Mipmap", default=False)
     localsp  = bpy.props.BoolProperty(name="Use Local Space Coords", default=False)
-    textures = bpy.props.BoolProperty(name="Export links to texture files", default=False)
+    textures = bpy.props.BoolProperty(name="Export links to texture files", default=True)
 
     overwrite_without_asking  = bpy.props.BoolProperty(name="Overwrite without asking", default=False)
     
