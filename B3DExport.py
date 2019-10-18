@@ -8,15 +8,16 @@ Tooltip: 'Export to Blitz3D file format (.b3d)'
 """
 __author__ = ["iego 'GaNDaLDF' Parisi, MTLZ (is06), Joerg Henrichs, Marianne Gagnon"]
 __url__ = ["www.gandaldf.com"]
-__version__ = "3.0"
+__version__ = "3.2"
 __bpydoc__ = """\
 """
 
-# BLITZ3D EXPORTER 3.0
+# BLITZ3D EXPORTER 3.2
 # Copyright (C) 2009 by Diego "GaNDaLDF" Parisi  -  www.gandaldf.com
 # Lightmap issue fixed by Capricorn 76 Pty. Ltd. - www.capricorn76.com
 # Blender 2.63 compatiblity based on work by MTLZ, www.is06.com
 # With changes by Marianne Gagnon and Joerg Henrichs, supertuxkart.sf.net (Copyright (C) 2011-2012)
+# OpenB3D/MiniB3D Overflow fix (MS3D behaviour) by Kippykip - kippykip.com
 #
 # LICENSE:
 # This program is free software; you can redistribute it and/or modify
@@ -36,8 +37,8 @@ __bpydoc__ = """\
 bl_info = {
     "name": "B3D (BLITZ3D) Model Exporter",
     "description": "Exports a blender scene or object to the B3D (BLITZ3D) format",
-    "author": "Diego 'GaNDaLDF' Parisi, MTLZ (is06), Joerg Henrichs, Marianne Gagnon",
-    "version": (3,1),
+    "author": "Diego 'GaNDaLDF' Parisi, MTLZ (is06), Joerg Henrichs, Marianne Gagnon, Kippykip",
+    "version": (3,2),
     "blender": (2, 5, 9),
     "api": 31236,
     "location": "File > Export",
@@ -861,7 +862,7 @@ def write_node(objects=[]):
             temp_buf.append(write_node_mesh(obj,obj_count,anim_data,exp_root)) #NODE MESH
             
             if anim_data:
-                temp_buf.append(write_node_anim(num_frames)) #NODE ANIM
+                temp_buf.append(write_node_anim(num_frames+1)) #NODE ANIM - 18/10/2019 a "+1" was added to fix overflow issues with OpenB3D & MiniB3D. This is how MilkShape 3D Exports its files. ~Kippykip
 
                 for ibone in bone_stack:
                     if not bone_stack[ibone][BONE_PARENT]:
