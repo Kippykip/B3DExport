@@ -6,9 +6,9 @@ Blender: 259
 Group: 'Export'
 Tooltip: 'Export to Blitz3D file format (.b3d)'
 """
-__author__ = ["iego 'GaNDaLDF' Parisi, MTLZ (is06), Joerg Henrichs, Marianne Gagnon"]
+__author__ = ["iego 'GaNDaLDF' Parisi, MTLZ (is06), Joerg Henrichs, Marianne Gagnon, Kippykip"]
 __url__ = ["www.gandaldf.com"]
-__version__ = "3.2"
+__version__ = "3.2.1"
 __bpydoc__ = """\
 """
 
@@ -38,7 +38,7 @@ bl_info = {
     "name": "B3D (BLITZ3D) Model Exporter",
     "description": "Exports a blender scene or object to the B3D (BLITZ3D) format",
     "author": "Diego 'GaNDaLDF' Parisi, MTLZ (is06), Joerg Henrichs, Marianne Gagnon, Kippykip",
-    "version": (3,2),
+    "version": (3,2,1),
     "blender": (2, 5, 9),
     "api": 31236,
     "location": "File > Export",
@@ -1461,6 +1461,7 @@ class B3D_Export_Operator(bpy.types.Operator):
     #objects = bpy.props.CollectionProperty(type=ObjectListItem, options={'HIDDEN'})
     
     def invoke(self, context, event):
+        bpy.ops.object.mode_set(mode='OBJECT') #Switch to Object mode, since glitches occur if left in Edit Mode ~Kippykip
         blend_filepath = context.blend_data.filepath
         if not blend_filepath:
             blend_filepath = "Untitled.b3d"
