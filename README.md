@@ -14,7 +14,7 @@ Basically the same as the forked MineTest version but just with "Export Textures
 * Bundled in .b3d model format specifications text file.  
 
 **Installation:**  
-In your Blender 2.7.9b or Bforartists application, follow these steps.  
+In your Blender 2.79b or Bforartists application, follow these steps.  
 1. Click the **File** tab  
 2. Click **User Preferences**  
 3. Click the **Add-ons** tab  
