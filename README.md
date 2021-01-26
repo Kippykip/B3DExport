@@ -20,4 +20,5 @@ In your Blender 2.7.9b or Bforartists application, follow these steps.
 3. Click the **Add-ons** tab  
 4. On the bottom, click **Install Add-on from File...**  
 5. Select the downloaded **B3Dexport.py** file  
-6. Click **Save User Settings** and Enjoy!  
+6. Tick the addon  
+7. Click **Save User Settings** and Enjoy!  
