@@ -8,11 +8,11 @@ Tooltip: 'Export to Blitz3D file format (.b3d)'
 """
 __author__ = ["iego 'GaNDaLDF' Parisi, MTLZ (is06), Joerg Henrichs, Marianne Gagnon, Kippykip"]
 __url__ = ["www.gandaldf.com"]
-__version__ = "3.2.1"
+__version__ = "3.2.2"
 __bpydoc__ = """\
 """
 
-# BLITZ3D EXPORTER 3.2
+# BLITZ3D EXPORTER 3.2.2
 # Copyright (C) 2009 by Diego "GaNDaLDF" Parisi  -  www.gandaldf.com
 # Lightmap issue fixed by Capricorn 76 Pty. Ltd. - www.capricorn76.com
 # Blender 2.63 compatiblity based on work by MTLZ, www.is06.com
@@ -38,13 +38,13 @@ bl_info = {
     "name": "B3D (BLITZ3D) Model Exporter",
     "description": "Exports a blender scene or object to the B3D (BLITZ3D) format",
     "author": "Diego 'GaNDaLDF' Parisi, MTLZ (is06), Joerg Henrichs, Marianne Gagnon, Kippykip",
-    "version": (3,2,1),
+    "version": (3,2,2),
     "blender": (2, 5, 9),
     "api": 31236,
     "location": "File > Export",
     "warning": '', # used for warning icon and text in addons panel
-    "wiki_url": "http://supertuxkart.sourceforge.net/Get_involved",
-    "tracker_url": "https://sourceforge.net/apps/trac/supertuxkart/",
+    "wiki_url": "https://github.com/Kippykip/B3DExport",
+    "tracker_url": "https://github.com/Kippykip/B3DExport/issues",
     "category": "Import-Export"}
 
 
@@ -1461,7 +1461,11 @@ class B3D_Export_Operator(bpy.types.Operator):
     #objects = bpy.props.CollectionProperty(type=ObjectListItem, options={'HIDDEN'})
     
     def invoke(self, context, event):
-        bpy.ops.object.mode_set(mode='OBJECT') #Switch to Object mode, since glitches occur if left in Edit Mode ~Kippykip
+        #Switch to Object mode, since glitches occur if left in Edit Mode ~Kippykip
+        try:
+            bpy.ops.object.mode_set(mode='OBJECT')
+        except:
+            pass
         blend_filepath = context.blend_data.filepath
         if not blend_filepath:
             blend_filepath = "Untitled.b3d"
