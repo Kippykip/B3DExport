@@ -8,16 +8,16 @@ Tooltip: 'Export to Blitz3D file format (.b3d)'
 """
 __author__ = ["iego 'GaNDaLDF' Parisi, MTLZ (is06), Joerg Henrichs, Marianne Gagnon, Kippykip"]
 __url__ = ["www.gandaldf.com"]
-__version__ = "3.2.2"
+__version__ = "3.3"
 __bpydoc__ = """\
 """
 
-# BLITZ3D EXPORTER 3.2.2
+# BLITZ3D EXPORTER 3.3
 # Copyright (C) 2009 by Diego "GaNDaLDF" Parisi  -  www.gandaldf.com
 # Lightmap issue fixed by Capricorn 76 Pty. Ltd. - www.capricorn76.com
 # Blender 2.63 compatiblity based on work by MTLZ, www.is06.com
 # With changes by Marianne Gagnon and Joerg Henrichs, supertuxkart.sf.net (Copyright (C) 2011-2012)
-# OpenB3D/MiniB3D Overflow fix (MS3D behaviour) by Kippykip - kippykip.com
+# "Export each object as its own .b3d file" mode and OpenB3D/MiniB3D Overflow + non-object mode bugfixes by Kippykip - kippykip.com
 #
 # LICENSE:
 # This program is free software; you can redistribute it and/or modify
@@ -38,7 +38,7 @@ bl_info = {
     "name": "B3D (BLITZ3D) Model Exporter",
     "description": "Exports a blender scene or object to the B3D (BLITZ3D) format",
     "author": "Diego 'GaNDaLDF' Parisi, MTLZ (is06), Joerg Henrichs, Marianne Gagnon, Kippykip",
-    "version": (3,2,2),
+    "version": (3, 3, 0),
     "blender": (2, 5, 9),
     "api": 31236,
     "location": "File > Export",
@@ -1453,6 +1453,7 @@ class B3D_Export_Operator(bpy.types.Operator):
     mipmap   = bpy.props.BoolProperty(name="Mipmap", default=False)
     localsp  = bpy.props.BoolProperty(name="Use Local Space Coords", default=False)
     textures = bpy.props.BoolProperty(name="Export links to texture files", default=True)
+    exportseparate = bpy.props.BoolProperty(name="Export each object as its own .b3d file", default=False)
 
     overwrite_without_asking  = bpy.props.BoolProperty(name="Overwrite without asking", default=False)
     
@@ -1461,11 +1462,6 @@ class B3D_Export_Operator(bpy.types.Operator):
     #objects = bpy.props.CollectionProperty(type=ObjectListItem, options={'HIDDEN'})
     
     def invoke(self, context, event):
-        #Switch to Object mode, since glitches occur if left in Edit Mode ~Kippykip
-        try:
-            bpy.ops.object.mode_set(mode='OBJECT')
-        except:
-            pass
         blend_filepath = context.blend_data.filepath
         if not blend_filepath:
             blend_filepath = "Untitled.b3d"
@@ -1477,7 +1473,11 @@ class B3D_Export_Operator(bpy.types.Operator):
         return {'RUNNING_MODAL'}
     
     def execute(self, context):
-        
+        #Switch to Object mode, since glitches occur if left in Edit Mode ~Kippykip
+        try:
+            bpy.ops.object.mode_set(mode='OBJECT')
+        except:
+            pass
         global b3d_parameters
         global the_scene
         b3d_parameters["export-selected"] = self.selected
@@ -1488,6 +1488,7 @@ class B3D_Export_Operator(bpy.types.Operator):
         b3d_parameters["mipmap"         ] = self.mipmap
         b3d_parameters["local-space"    ] = self.localsp
         b3d_parameters["export-textures"] = self.textures
+        b3d_parameters["export-separate-mesh"] = self.exportseparate
         
         the_scene = context.scene
         
@@ -1499,32 +1500,77 @@ class B3D_Export_Operator(bpy.types.Operator):
 
         print("EXPORT", self.filepath," vcolor = ", self.vcolors)
             
-        obj_list = []
-        try:
-            # FIXME: silly and ugly hack, the list of objects to export is passed through
-            #        a custom scene property
-            obj_list = context.scene.obj_list
-        except:
-            pass
-        
-        if len(obj_list) > 0:
-          
-            #objlist = []
-            #for a in self.objects:
-            #    objlist.append(bpy.data.objects[a.id])
-            #
-            #write_b3d_file(self.filepath, obj_list)
-            
-            write_b3d_file(self.filepath, obj_list)
-        else:
-            if os.path.exists(self.filepath) and not self.overwrite_without_asking:
-                #self.report({'ERROR'}, "File Exists")
-                B3D_Confirm_Operator.filepath = self.filepath
-                bpy.ops.screen.b3d_confirm('INVOKE_DEFAULT')
+        obj_list = []        
+        #New handy mode! (totally didn't add this feature because of my own B3D project needs o_o) ~Kippykip
+        if(self.exportseparate):
+            #Don't bother doing anything if there's no objects
+            if(len(bpy.data.objects) <= 0):
                 return {'FINISHED'}
+                
+            #Loop through all objects and add them to a list depending on what modes are enabled
+            for obj in bpy.data.objects:
+                #Is export-selected-only enabled? Then only add selected objects in our list
+                if(self.selected):
+                    if(obj.select): obj_list.append(obj)
+                else:
+                    obj_list.append(obj)
+            
+            #Small function that removes bad characters in filenames, returns in lowercase
+            def del_specialchars(letter):
+                if(letter.isalnum()): return letter.lower()
+                return "_"
+            
+            #Alright lets go through everything in the list to export each object as it's own .B3D file
+            for obj in obj_list:
+                #Create a small list of objects for each .b3d export
+                mini_list = []
+                #If it's an armature, add all its children/child too (so rigged models work properly)
+                if(obj.type == "ARMATURE"):
+                    mini_list.append(obj)
+                    for child in obj.children:
+                        mini_list.append(child)
+                elif(obj.parent == None): #otherwise if it's a standard object with no parents, then just add just the one object in the array
+                    if(obj.type == "MESH"): mini_list.append(obj)
+                    #Only do these ones if it's enabled from above
+                    if(self.lights and obj.type == "LAMP"): mini_list.append(obj)
+                    if(self.cameras and obj.type == "CAMERA"): mini_list.append(obj)
+                
+                #Does the list contain an object?
+                if(len(mini_list) > 0):
+                    #Complicated line that basically turns the object name into an actual filename (thank you stackoverflow for special chars snip!)
+                    #We use Index[0] in case objects have children, that way the .b3d model filename is named after the first thing like an Armature or something.
+                    filename = "".join(del_specialchars(index) for index in mini_list[0].name).rstrip("_") + ".b3d"
+                    fullpath = os.path.join(os.path.dirname(self.filepath), filename)
+                    #Finally export the .B3D file
+                    write_b3d_file(fullpath, mini_list)
+            return {'FINISHED'}
+        # Standard export
+        else:
+            try:
+                # FIXME: silly and ugly hack, the list of objects to export is passed through
+                #        a custom scene property
+                obj_list = context.scene.obj_list
+            except:
+                pass
+            
+            if len(obj_list) > 0:
+              
+                #objlist = []
+                #for a in self.objects:
+                #    objlist.append(bpy.data.objects[a.id])
+                #
+                #write_b3d_file(self.filepath, obj_list)
+
+                write_b3d_file(self.filepath, obj_list)
             else:
-                write_b3d_file(self.filepath)
-        return {'FINISHED'}
+                if os.path.exists(self.filepath) and not self.overwrite_without_asking:
+                    #self.report({'ERROR'}, "File Exists")
+                    B3D_Confirm_Operator.filepath = self.filepath
+                    bpy.ops.screen.b3d_confirm('INVOKE_DEFAULT')
+                    return {'FINISHED'}
+                else:
+                    write_b3d_file(self.filepath)
+            return {'FINISHED'}
 
 
 # Add to a menu

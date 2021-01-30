@@ -4,6 +4,9 @@
 Basically the same as the forked MineTest version but just with "Export Textures" enabled by default, as well as a few bugfixes.  
 
 **Changelog:**  
+> Version 3.3 
+* Added an optional tickbox for exporting called "Export each object as its own .b3d file".
+* Moved the Object Mode switching code to a more suitable place.
 > Version 3.2.2  
 * Fixed a bug where if no object was selected at all, the script would fail when exporting.  
 * Updated script help links to point to the issues URL here instead.  
