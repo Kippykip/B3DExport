@@ -8,16 +8,16 @@ Tooltip: 'Export to Blitz3D file format (.b3d)'
 """
 __author__ = ["iego 'GaNDaLDF' Parisi, MTLZ (is06), Joerg Henrichs, Marianne Gagnon, Kippykip"]
 __url__ = ["www.gandaldf.com"]
-__version__ = "3.3"
+__version__ = "3.4"
 __bpydoc__ = """\
 """
 
-# BLITZ3D EXPORTER 3.3
+# BLITZ3D EXPORTER 3.4
 # Copyright (C) 2009 by Diego "GaNDaLDF" Parisi  -  www.gandaldf.com
 # Lightmap issue fixed by Capricorn 76 Pty. Ltd. - www.capricorn76.com
 # Blender 2.63 compatiblity based on work by MTLZ, www.is06.com
 # With changes by Marianne Gagnon and Joerg Henrichs, supertuxkart.sf.net (Copyright (C) 2011-2012)
-# "Export each object as its own .b3d file" mode and OpenB3D/MiniB3D Overflow + non-object mode bugfixes by Kippykip - kippykip.com
+# "Export each object as its own .b3d file" mode, "Export only keyframes" mode and OpenB3D/MiniB3D Overflow + non-object mode + frame <=0 bugfixes by Kippykip - kippykip.com
 #
 # LICENSE:
 # This program is free software; you can redistribute it and/or modify
@@ -38,7 +38,7 @@ bl_info = {
     "name": "B3D (BLITZ3D) Model Exporter",
     "description": "Exports a blender scene or object to the B3D (BLITZ3D) format",
     "author": "Diego 'GaNDaLDF' Parisi, MTLZ (is06), Joerg Henrichs, Marianne Gagnon, Kippykip",
-    "version": (3, 3, 0),
+    "version": (3, 4, 0),
     "blender": (2, 5, 9),
     "api": 31236,
     "location": "File > Export",
@@ -134,7 +134,7 @@ def getArmatureAnimationEnd(armature):
 # (main exporter function)
 def write_b3d_file(filename, objects=[]):
     global texture_flags, texs_stack, trimmed_paths, tesselated_objects
-    global brus_stack, vertex_groups, bone_stack, keys_stack
+    global brus_stack, vertex_groups, bone_stack, keys_stack, keyframe_stack
 
     #Global Stacks
     texture_flags = []
@@ -143,6 +143,7 @@ def write_b3d_file(filename, objects=[]):
     vertex_groups = []
     bone_stack = []
     keys_stack = []
+    keyframe_stack = []
     trimmed_paths = {}
     file_buf = bytearray()
     temp_buf = bytearray()
@@ -505,6 +506,7 @@ def write_brus(objects=[]):
 def write_node(objects=[]):
     global bone_stack
     global keys_stack
+    global keyframe_stack
     global b3d_parameters
     global the_scene
     
@@ -526,6 +528,8 @@ def write_node(objects=[]):
     #first_frame = Blender.Draw.Create(exp_con.startFrame())
     #last_frame = Blender.Draw.Create(exp_con.endFrame())
     #num_frames = last_frame.val - first_frame.val
+    if(the_scene.frame_start <= 0):
+        the_scene.frame_start = 1 #Script breaks if the frame start is 0 or less. Workaround ~Kippykip
     first_frame = the_scene.frame_start
 
     if DEBUG: print("<node first_frame=", first_frame, ">")
@@ -612,6 +616,15 @@ def write_node(objects=[]):
                 
                 quat = matrix.to_quaternion()
                 quat.normalize()
+                
+                # Write which frames are keyframes into this array (if the setting is enabled)
+                if(len(keyframe_stack) == 0 and b3d_parameters.get("export-keyframes")):
+                    if(anim_data.action is not None):
+                        for fcu in anim_data.action.fcurves:
+                            for keyframe in fcu.keyframe_points:
+                                x, y = keyframe.co
+                                if x not in keyframe_stack:
+                                    keyframe_stack.append((math.ceil(x)))
 
                 temp_buf.append(write_float_quad(quat.w, quat.x, quat.z, quat.y))
             else:
@@ -1381,6 +1394,13 @@ def write_node_bone(ibone):
 
     return bone_buf
 
+# Check if a frame is a keyframe
+def is_keyframe(frameindex, kfarray):
+    for kf in range(len(kfarray)):
+        if(frameindex == kfarray[kf]):
+            return True
+    return False
+    
 # ==== Write NODE KEYS Chunk ====
 def write_node_keys(ibone):
     keys_buf = bytearray()
@@ -1392,26 +1412,28 @@ def write_node_keys(ibone):
 
     for ikeys in range(len(keys_stack)):
         if keys_stack[ikeys][1] == my_name:
-            temp_buf.append(write_int(keys_stack[ikeys][0])) #Frame
+            #Do a check whether to only export keyframes from that setting in the sidebar. (If the length is 0 then clearly that setting wasn't enabled) ~Kippykip
+            if(len(keyframe_stack) == 0 or (len(keyframe_stack) > 0 and is_keyframe(keys_stack[ikeys][0], keyframe_stack))):
+                temp_buf.append(write_int(keys_stack[ikeys][0])) #Frame
 
-            position = keys_stack[ikeys][2]
-            # FIXME: we should use the same matrix format everywhere and not require this
-            if b3d_parameters.get("local-space"):
-                if bone_stack[ibone][BONE_PARENT]:
-                    temp_buf.append(write_float_triplet(-position[0], position[2], position[1]))
+                position = keys_stack[ikeys][2]
+                # FIXME: we should use the same matrix format everywhere and not require this
+                if b3d_parameters.get("local-space"):
+                    if bone_stack[ibone][BONE_PARENT]:
+                        temp_buf.append(write_float_triplet(-position[0], position[2], position[1]))
+                    else:
+                        temp_buf.append(write_float_triplet(position[0], position[2], position[1]))
                 else:
-                    temp_buf.append(write_float_triplet(position[0], position[2], position[1]))
-            else:
-                temp_buf.append(write_float_triplet(-position[0], position[1], position[2]))
+                    temp_buf.append(write_float_triplet(-position[0], position[1], position[2]))
 
-            scale = keys_stack[ikeys][3]
-            temp_buf.append(write_float_triplet(scale[0], scale[1], scale[2]))
+                scale = keys_stack[ikeys][3]
+                temp_buf.append(write_float_triplet(scale[0], scale[1], scale[2]))
 
-            quat = keys_stack[ikeys][4]
-            quat.normalize()
+                quat = keys_stack[ikeys][4]
+                quat.normalize()
 
-            temp_buf.append(write_float_quad(quat.w, -quat.x, quat.y, quat.z))
-            #break
+                temp_buf.append(write_float_quad(quat.w, -quat.x, quat.y, quat.z))
+                #break
 
     keys_buf += write_chunk(b"KEYS",b"".join(temp_buf))
     temp_buf = []
@@ -1454,6 +1476,7 @@ class B3D_Export_Operator(bpy.types.Operator):
     localsp  = bpy.props.BoolProperty(name="Use Local Space Coords", default=False)
     textures = bpy.props.BoolProperty(name="Export links to texture files", default=True)
     exportseparate = bpy.props.BoolProperty(name="Export each object as its own .b3d file", default=False)
+    exportkeyframes = bpy.props.BoolProperty(name="Export only keyframes", default=True)
 
     overwrite_without_asking  = bpy.props.BoolProperty(name="Overwrite without asking", default=False)
     
@@ -1489,6 +1512,7 @@ class B3D_Export_Operator(bpy.types.Operator):
         b3d_parameters["local-space"    ] = self.localsp
         b3d_parameters["export-textures"] = self.textures
         b3d_parameters["export-separate-mesh"] = self.exportseparate
+        b3d_parameters["export-keyframes"] = self.exportkeyframes
         
         the_scene = context.scene
         
